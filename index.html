@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TWoW Raid Consumables Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="overlay"></div>
+    <header class="topbar">
+      <a
+        class="top-link"
+        href="https://vill8.github.io/twowcompconslist/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        TWoW Consumables List
+      </a>
+
+      <a
+        class="logo-wrap"
+        href="https://turtlecraft.gg/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Turtle WoW"
+      >
+        <img
+          class="logo"
+          src="https://turtlecraft.gg/build/assets/logo_shadow-DlJUma57.png"
+          alt="Turtle WoW logo"
+        />
+      </a>
+
+      <a
+        class="top-link"
+        href="https://vill8.github.io/TWOW-BlastedLands-Consumables-Calculator/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Blasted Lands Buffs
+      </a>
+    </header>
+
+    <main class="container">
+      <section class="panel">
+        <h1>Raid Consumables Calculator</h1>
+        <p class="subtitle">
+          Choose your raid, class, role and duration to estimate required
+          consumables.
+        </p>
+
+        <form id="calculator-form" class="form-grid">
+          <label>
+            Raid
+            <select id="raid" required></select>
+          </label>
+
+          <label>
+            Class
+            <select id="class" required></select>
+          </label>
+
+          <label>
+            Role
+            <select id="role" required></select>
+          </label>
+
+          <label>
+            Approximate Raid Time
+            <select id="raid-time" required></select>
+          </label>
+
+          <button type="submit" id="calculate-btn">Calculate</button>
+        </form>
+
+        <p id="status" class="status">Loading consumables from Google Sheets...</p>
+      </section>
+
+      <section class="panel results-panel">
+        <h2>Recommended Consumables</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Effect</th>
+                <th>Duration</th>
+                <th>Persists Through Death</th>
+                <th>Stacks</th>
+                <th>Qty Needed</th>
+              </tr>
+            </thead>
+            <tbody id="results-body">
+              <tr>
+                <td colspan="6" class="empty">
+                  Set your options and click Calculate.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
