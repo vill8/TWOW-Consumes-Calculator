@@ -344,7 +344,7 @@ function renderRows(rows, raidMinutes) {
           <td>${row.duration || "-"}</td>
           <td><span class="${persistsClass}">${persists}</span></td>
           <td>${row.stacks || "-"}</td>
-          <td><strong>${qty}</strong></td>
+          <td><span class="qty-badge">${qty}</span></td>
         </tr>
       `;
     })
