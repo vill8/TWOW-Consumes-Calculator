@@ -21,6 +21,7 @@ const CLASS_ROLE_OPTIONS = {
   Priest: ["rdps", "Healer"],
   Warlock: ["rdps"],
   Mage: ["rdps"],
+  Paladin: ["Tank", "Healer", "mdps"],
 };
 
 const RAID_TIME_OPTIONS = ["00:30", "01:00", "01:30", "02:00", "02:30", "03:00", "03:30"];
@@ -383,7 +384,6 @@ function filterConsumables() {
   });
 
   renderRows(filtered, raidMinutes);
-  statusEl.textContent = `${filtered.length} consumables matched your setup.`;
 }
 
 async function loadCsv() {
