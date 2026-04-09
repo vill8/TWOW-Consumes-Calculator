@@ -31,6 +31,17 @@ const CSV_URLS = [
   "https://docs.google.com/spreadsheets/d/1u7a4fR5lp8Jl0fRk5R8KTC7flyoN0BkzysckJdDMIUQ/export?format=csv&gid=0",
 ];
 
+// Situational raid rules: these consumables are only needed on a subset of bosses.
+const SITUATIONAL_ITEM_MINUTES = {
+  naxxramas: {
+    "greater stoneshield potion": 15,
+  },
+  "upper karazhan halls": {
+    "consecrated sharpening stone": 45,
+    "blessed wizard oil": 45,
+  },
+};
+
 const raidSelect = document.getElementById("raid");
 const classSelect = document.getElementById("class");
 const roleSelect = document.getElementById("role");
@@ -39,6 +50,7 @@ const form = document.getElementById("calculator-form");
 const resultsBody = document.getElementById("results-body");
 const statusEl = document.getElementById("status");
 const button = document.getElementById("calculate-btn");
+const rulesBoxEl = document.getElementById("applied-rules");
 
 let consumables = [];
 let tooltipEl = null;
@@ -192,11 +204,22 @@ function calculateQuantity(row, raidMinutes) {
   return Math.max(1, Math.ceil(raidMinutes / durationMins));
 }
 
-function shouldExcludeConsumable(row, selectedClass, selectedRaidName) {
+function getEffectiveRaidMinutesForItem(row, raidMinutes, selectedRaidName) {
+  const raidKey = normalize(selectedRaidName);
+  const itemKey = normalize(row.name);
+  const raidOverrides = SITUATIONAL_ITEM_MINUTES[raidKey];
+  if (!raidOverrides) return raidMinutes;
+  const override = raidOverrides[itemKey];
+  if (!override) return raidMinutes;
+  return Math.min(raidMinutes, override);
+}
+
+function shouldExcludeConsumable(row, selectedClass, selectedRaidName, selectedRole) {
   const normalizedClass = normalize(selectedClass);
   const normalizedRaidName = normalize(selectedRaidName);
   const normalizedName = normalize(row.name);
   const normalizedDuration = normalize(row.duration);
+  const normalizedRole = normalize(selectedRole);
   const haystack = `${row.name || ""} ${row.effect || ""} ${row.stacks || ""}`.toLowerCase();
 
   // Exclude all greater protection potions and resistance-related consumables/items.
@@ -227,7 +250,128 @@ function shouldExcludeConsumable(row, selectedClass, selectedRaidName) {
     return !allowedClasses.includes(normalizedClass);
   }
 
+  // In UKH, melee should default to Elemental Sharpening Stone for most encounters.
+  if (
+    normalizedRaidName === "upper karazhan halls" &&
+    normalizedRole === "mdps" &&
+    normalizedName === "consecrated sharpening stone"
+  ) {
+    return true;
+  }
+
+  // Dragonbreath Chili is situational and usually not relevant for Warrior.
+  if (normalizedName === "dragonbreath chili") {
+    const allowedClasses = ["rogue", "shaman", "druid", "paladin"];
+    return !allowedClasses.includes(normalizedClass);
+  }
+
   return false;
+}
+
+function calculateFinalQuantity(row, raidMinutes, selectedRaidName, selectedRole) {
+  const normalizedName = normalize(row.name);
+  const normalizedRaidName = normalize(selectedRaidName);
+  const normalizedRole = normalize(selectedRole);
+
+  // Situational defensive usage: keep Greater Stoneshield recommendation low.
+  if (normalizedName === "greater stoneshield potion") {
+    if (normalizedRaidName === "naxxramas") return 2;
+    return 1;
+  }
+
+  // Fixed single usage in Upper Karazhan Halls.
+  if (normalizedRaidName === "upper karazhan halls" && normalizedName === "frozen rune") {
+    return 1;
+  }
+
+  const effectiveRaidMinutes = getEffectiveRaidMinutesForItem(row, raidMinutes, selectedRaidName);
+  let qty = calculateQuantity(row, effectiveRaidMinutes);
+
+  // Value these higher for tanks in Naxxramas.
+  if (normalizedRaidName === "naxxramas" && normalizedRole === "tank") {
+    if (normalizedName === "free action potion") qty = Math.max(qty, 3);
+    if (normalizedName === "frozen rune") qty = Math.max(qty, 2);
+  }
+
+  return qty;
+}
+
+function getDisplayNotes(row) {
+  const notes = [];
+  const existing = String(row.stacks || "").trim();
+  const normalizedName = normalize(row.name);
+  const isFood = truthy(row.isfood);
+
+  if (existing) notes.push(existing);
+
+  if (isFood) {
+    notes.push("Food buff - does not stack with other food buffs. Pick one best for your role.");
+  }
+
+  if (normalizedName === "winterfall firewater" || normalizedName === "blackroot brew") {
+    notes.push("Mutually exclusive with Winterfall Firewater / Blackroot Brew.");
+  }
+
+  return notes.length ? notes.join(" | ") : "-";
+}
+
+function getAppliedRulesHtml(selectedRaidName, selectedClass, selectedRole) {
+  const raidKey = normalize(selectedRaidName);
+  const classKey = normalize(selectedClass);
+  const roleKey = normalize(selectedRole);
+  const rules = [];
+  const pushRule = (type, text) => rules.push({ type, text });
+
+  if (raidKey === "upper karazhan halls") {
+    pushRule("warn", "Consecrated Sharpening Stone and Blessed Wizard Oil are treated as situational (45 min window).");
+    pushRule("warn", "Frozen Rune is fixed to 1.");
+    if (roleKey === "mdps") {
+      pushRule("info", "mDPS defaults to Elemental Sharpening Stone over Consecrated Sharpening Stone.");
+    }
+  }
+
+  if (raidKey === "naxxramas" && roleKey === "tank") {
+    pushRule("tank", "Tank priority: Free Action Potion quantity is increased (min 3).");
+    pushRule("tank", "Tank priority: Frozen Rune quantity is increased (min 2).");
+  }
+
+  if (raidKey === "naxxramas") {
+    pushRule("warn", "Greater Stoneshield Potion is treated as situational (15 min window, mainly for Patchwerk).");
+  }
+
+  if (raidKey === "upper karazhan halls") {
+    pushRule("warn", "Greater Stoneshield Potion is treated as highly situational (flat low recommendation).");
+  }
+
+  if (classKey === "warrior") {
+    pushRule("info", "Dragonbreath Chili is excluded for Warrior.");
+  }
+
+  pushRule("info", "Food consumables include a note that food buffs do not stack.");
+  pushRule("info", "Winterfall Firewater and Blackroot Brew are marked as mutually exclusive.");
+
+  return `
+    <div class="rules-title">Applied Raid Rules</div>
+    <div class="rules-list">
+      ${rules
+        .map(
+          (rule) => `
+        <div class="rule-line rule-${escapeHtml(rule.type)}">
+          <span class="rule-icon" aria-hidden="true"></span>
+          <span class="rule-text">${escapeHtml(rule.text)}</span>
+        </div>`
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function refreshAppliedRules() {
+  const selectedRaid = RAID_OPTIONS.find((r) => r.name === raidSelect.value);
+  const selectedRaidName = selectedRaid?.name || "";
+  const selectedClass = classSelect.value;
+  const selectedRole = roleToCsvRole(roleSelect.value);
+  rulesBoxEl.innerHTML = getAppliedRulesHtml(selectedRaidName, selectedClass, selectedRole);
 }
 
 function escapeHtml(value) {
@@ -323,7 +467,7 @@ function createItemNameCell(row) {
   </span>`;
 }
 
-function renderRows(rows, raidMinutes) {
+function renderRows(rows, raidMinutes, selectedRaidName) {
   if (!rows.length) {
     resultsBody.innerHTML = `<tr><td class="empty" colspan="6">No consumables found for this setup.</td></tr>`;
     return;
@@ -332,10 +476,11 @@ function renderRows(rows, raidMinutes) {
   const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name));
   resultsBody.innerHTML = sorted
     .map((row) => {
-      const qty = calculateQuantity(row, raidMinutes);
+      const qty = calculateFinalQuantity(row, raidMinutes, selectedRaidName, roleSelect.value);
       const persistsYes = truthy(row.persists);
       const persists = persistsYes ? "Yes" : "No";
       const persistsClass = persistsYes ? "pill pill-yes" : "pill pill-no";
+      const notes = getDisplayNotes(row);
 
       return `
         <tr>
@@ -343,7 +488,7 @@ function renderRows(rows, raidMinutes) {
           <td>${row.effect || "-"}</td>
           <td>${row.duration || "-"}</td>
           <td><span class="${persistsClass}">${persists}</span></td>
-          <td>${row.stacks || "-"}</td>
+          <td>${notes}</td>
           <td><span class="qty-badge">${qty}</span></td>
         </tr>
       `;
@@ -365,6 +510,7 @@ function updateRoleOptions() {
   const roles = CLASS_ROLE_OPTIONS[selectedClass] || [];
   roleSelect.innerHTML = "";
   roles.forEach((role) => roleSelect.appendChild(option(role, role.toUpperCase())));
+  refreshAppliedRules();
 }
 
 function filterConsumables() {
@@ -379,11 +525,12 @@ function filterConsumables() {
     const tierOk = matchesScope(row.tier, selectedTier);
     const classOk = matchesScope(row.classes, selectedClass);
     const roleOk = matchesScope(row.roles, selectedRole);
-    const notExcluded = !shouldExcludeConsumable(row, selectedClass, selectedRaidName);
+    const notExcluded = !shouldExcludeConsumable(row, selectedClass, selectedRaidName, selectedRole);
     return tierOk && classOk && roleOk && notExcluded;
   });
 
-  renderRows(filtered, raidMinutes);
+  renderRows(filtered, raidMinutes, selectedRaidName);
+  refreshAppliedRules();
 }
 
 async function loadCsv() {
@@ -429,6 +576,8 @@ async function loadCsv() {
 }
 
 classSelect.addEventListener("change", updateRoleOptions);
+raidSelect.addEventListener("change", refreshAppliedRules);
+roleSelect.addEventListener("change", refreshAppliedRules);
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   filterConsumables();
@@ -454,4 +603,5 @@ window.addEventListener("blur", hideTooltip);
 
 createTooltip();
 populateInputs();
+refreshAppliedRules();
 loadCsv();

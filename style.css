@@ -189,6 +189,58 @@ button:hover {
   text-align: center;
 }
 
+.rules-box {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 183, 0, 0.38);
+  border-radius: 4px;
+  background: rgba(40, 30, 12, 0.36);
+  color: #e9ddb7;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.rules-title {
+  margin-bottom: 5px;
+  font-family: "Cinzel", serif;
+  color: var(--wow-gold);
+  font-weight: 700;
+}
+
+.rules-list {
+  display: grid;
+  gap: 4px;
+}
+
+.rule-line {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  align-items: start;
+  gap: 8px;
+}
+
+.rule-icon {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: #8992a0;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.45);
+}
+
+.rule-warn .rule-icon {
+  background: #f0aa25;
+}
+
+.rule-tank .rule-icon {
+  background: #76b7ff;
+}
+
+.rule-info .rule-icon {
+  background: #7ccf8a;
+}
+
 .results-panel {
   overflow: hidden;
 }
