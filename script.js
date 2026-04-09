@@ -296,19 +296,30 @@ function hideTooltip() {
 function createItemNameCell(row) {
   const name = row.name || "-";
   const id = String(row.id || "").trim();
-  if (!id) return escapeHtml(name);
+  const iconUrl = getIconUrl(row);
+
+  const iconHtml = iconUrl
+    ? `<img class="table-item-icon" src="${escapeHtml(iconUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="table-item-icon table-item-icon-placeholder" aria-hidden="true"></span>`;
+
+  if (!id) {
+    return `<span class="item-name-wrap">${iconHtml}<span>${escapeHtml(name)}</span></span>`;
+  }
 
   const href = `https://database.turtlecraft.gg/?item=${encodeURIComponent(id)}`;
-  return `<a
-    class="item-link"
-    href="${href}"
-    target="_blank"
-    rel="noopener noreferrer"
-    data-item-name="${escapeHtml(name)}"
-    data-item-effect="${escapeHtml(row.effect || "")}"
-    data-item-duration="${escapeHtml(row.duration || "")}"
-    data-item-icon="${escapeHtml(getIconUrl(row))}"
-  >${escapeHtml(name)}</a>`;
+  return `<span class="item-name-wrap">
+    ${iconHtml}
+    <a
+      class="item-link"
+      href="${href}"
+      target="_blank"
+      rel="noopener noreferrer"
+      data-item-name="${escapeHtml(name)}"
+      data-item-effect="${escapeHtml(row.effect || "")}"
+      data-item-duration="${escapeHtml(row.duration || "")}"
+      data-item-icon="${escapeHtml(iconUrl)}"
+    >${escapeHtml(name)}</a>
+  </span>`;
 }
 
 function renderRows(rows, raidMinutes) {
